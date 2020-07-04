@@ -1,6 +1,6 @@
 ﻿@page "/myorders/{orderId:int}"
 @using System.Threading
-@inject HttpClient HttpClient
+@inject OrdersClient OrdersClient
 @implements IDisposable
 
     <div class="main">
@@ -51,13 +51,14 @@
 
     private async void PollForUpdates()
     {
+        invalidOrder = false;
         pollingCancellationToken = new CancellationTokenSource();
+
         while (!pollingCancellationToken.IsCancellationRequested)
         {
             try
             {
-                invalidOrder = false;
-                orderWithStatus = await HttpClient.GetFromJsonAsync<OrderWithStatus>($"orders/{OrderId}");
+                orderWithStatus = await OrdersClient.GetOrder(OrderId);
                 StateHasChanged();
 
                 if (orderWithStatus.IsDelivered)
@@ -68,6 +69,11 @@
                 {
                     await Task.Delay(4000);
                 }
+            }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                pollingCancellationToken.Cancel();
+                ex.Redirect();
             }
             catch (Exception ex)
             {

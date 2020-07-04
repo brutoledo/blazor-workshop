@@ -1,28 +1,29 @@
 ﻿@page "/checkout"
-@inject HttpClient HttpClient
+@attribute [Authorize]
+@inject OrdersClient OrdersClient
 @inject NavigationManager NavigationManager
 @inject OrderState OrderState
 
-    <div class="main">
-        <EditForm Model="OrderState.Order.DeliveryAddress" OnValidSubmit="PlaceOrder">
-            <div class="checkout-cols">
-                <div class="checkout-order-details">
-                    <h4>Review order</h4>
-                    <OrderReview Order="OrderState.Order" />
-                </div>
+<div class="main">
+    <EditForm Model="OrderState.Order.DeliveryAddress" OnValidSubmit="PlaceOrder">
+        <div class="checkout-cols">
+            <div class="checkout-order-details">
+                <h4>Review order</h4>
+                <OrderReview Order="OrderState.Order" />
             </div>
+        </div>
 
-            <div class="checkout-delivery-address">
-                <h4>Deliver to...</h4>
-                <AddressEditor Address="OrderState.Order.DeliveryAddress" />
-            </div>
+        <div class="checkout-delivery-address">
+            <h4>Deliver to...</h4>
+            <AddressEditor Address="OrderState.Order.DeliveryAddress" />
+        </div>
 
-            <button type="submit" class="checkout-button btn btn-warning" disabled="@isSubmitting">
-                Place order
-            </button>
-            <DataAnnotationsValidator />
-        </EditForm>
-    </div>
+        <button type="submit" class="checkout-button btn btn-warning" disabled="@isSubmitting">
+            Place order
+        </button>
+        <DataAnnotationsValidator />
+    </EditForm>
+</div>
 
 @code
 {
@@ -31,13 +32,17 @@
 
     async Task PlaceOrder()
     {
+        isSubmitting = true;
+
         try
         {
-            isSubmitting = true;
-            var response = await HttpClient.PostAsJsonAsync("orders", OrderState.Order);
-            var newOrderId = await response.Content.ReadFromJsonAsync<int>();
+            var newOrderId = await OrdersClient.PlaceOrder(OrderState.Order);
             OrderState.ResetOrder();
             NavigationManager.NavigateTo($"myorders/{newOrderId}");
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
         }
         catch (Exception ex)
         {
